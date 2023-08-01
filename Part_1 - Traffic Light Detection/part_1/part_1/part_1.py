@@ -57,6 +57,7 @@ def find_tfl_lights(c_image: np.ndarray,
     max_filtered_red_red_image = maximum_filter(red_red_conv, size=15)
     max_filtered_red_green_image = maximum_filter(green_green_conv, size=15)
 
+    # Extract Local Maxima area
     red_y, red_x  = np.where(max_filtered_red_red_image > 40)
     green_y, green_x  = np.where(max_filtered_red_green_image > 40)
 
