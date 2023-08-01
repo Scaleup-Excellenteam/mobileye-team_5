@@ -24,8 +24,13 @@ GREEN_X_COORDINATES = List[int]
 GREEN_Y_COORDINATES = List[int]
 
 
-def rgb2gray(rgb):
-    return np.dot(rgb[..., :3], [0.2989, 0.5870, 0.1140])
+def high_level_conv(image):
+    # conv_image = convolve2d(channel_image, high_level_kernel, mode="same")
+    high_level_kernel = np.array([[1 / 9, 1 / 9, 1 / 9],
+                                  [1 / 9, -8 / 9, 1 / 9],
+                                  [1 / 9, 1 / 9, 1 / 9]])
+
+    return convolve2d(image, high_level_kernel, mode="same")
 
 def find_tfl_lights(c_image: np.ndarray,
                     **kwargs) -> Tuple[RED_X_COORDINATES, RED_Y_COORDINATES, GREEN_X_COORDINATES, GREEN_Y_COORDINATES]:
@@ -39,49 +44,23 @@ def find_tfl_lights(c_image: np.ndarray,
     red_part = c_image[:, :, 0]
     green_part = c_image[:, :, 1]
 
-    high_level_kernel = np.array([[1 / 9, 1 / 9, 1 / 9],
-                                  [1 / 9, -8 / 9, 1 / 9],
-                                  [1 / 9, 1 / 9, 1 / 9]])
 
-    low_level_kernel = np.ones((3, 3)) / 9
+    # Apply high-level kernel for feature detection
+    red_conv = high_level_conv(red_part)
+    green_part = high_level_conv(green_part)
 
-    # # Apply low-level kernel for smoothing
-    # conv_image = convolve2d(red_part, low_level_kernel, mode="same")
-    #
-    # # Apply high-level kernel for feature detection
-    # conv_image = convolve2d(conv_image, high_level_kernel, mode="same")
-    red_conv = convolve2d(red_part, low_level_kernel, mode="same")
-    green_conv = convolve2d(green_part, low_level_kernel, mode="same")
-
-    red_red_conv = convolve2d(red_conv, high_level_kernel, mode="same")
-    green_green_conv = convolve2d(green_conv, high_level_kernel, mode="same")
-
-    # Perform element-wise multiplication between red_red_conv and green_conv
-    red_red_green_conv = red_red_conv * green_conv
-
-    # Perform element-wise multiplication between red_conv and green_green_conv
-    red_green_green_conv = red_conv * green_green_conv
+    # Apply high-level kernel again for feature detection
+    red_red_conv = high_level_conv(red_conv)
+    green_green_conv = high_level_conv(green_part)
 
     # Apply max filter to the resulting matrices
-    max_filtered_red_red_green_image = maximum_filter(red_red_conv, size=15)
-    max_filtered_red_green_green_image = maximum_filter(green_green_conv, size=15)
+    max_filtered_red_red_image = maximum_filter(red_red_conv, size=15)
+    max_filtered_red_green_image = maximum_filter(green_green_conv, size=15)
 
-    # Plot the original, grayscale, and convolved images
-    plt.figure(figsize=(15, 5))
-    plt.subplot(1, 3, 1)
-    plt.imshow(c_image)
-    plt.title("Original Image")
-    plt.subplot(1, 3, 2)
-    plt.imshow(max_filtered_red_red_green_image)
-    plt.title("Max Filtered red red conv * green Image")
-    plt.subplot(1, 3, 3)
-    plt.imshow(max_filtered_red_green_green_image)
-    plt.title("Max Filtered green green conv * red Image")
-    plt.show()
+    red_y, red_x  = np.where(max_filtered_red_red_image > 40)
+    green_y, green_x  = np.where(max_filtered_red_green_image > 40)
 
-    # red_y,red_x  = np.where(max_filtered_image > 10)
-
-    return [500, 700, 900], [500, 550, 600], [600, 800], [400, 300]
+    return red_x.tolist(), red_y.tolist(),  green_x.tolist(),  green_y.tolist()
 
 
 
@@ -121,10 +100,10 @@ def test_find_tfl_lights(image_path: str, image_json_path: Optional[str]=None, f
     c_image: np.ndarray = np.array(image)
 
     objects = None
-    if image_json_path:
-        image_json = json.load(Path(image_json_path).open())
-        objects: List[POLYGON_OBJECT] = [image_object for image_object in image_json['objects']
-                                         if image_object['label'] in TFL_LABEL]
+    # if image_json_path:
+    #     image_json = json.load(Path(image_json_path).open())
+    #     objects: List[POLYGON_OBJECT] = [image_object for image_object in image_json['objects']
+    #                                      if image_object['label'] in TFL_LABEL]
 
     show_image_and_gt(c_image, objects, fig_num)
 
