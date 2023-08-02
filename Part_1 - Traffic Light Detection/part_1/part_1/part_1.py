@@ -1,9 +1,11 @@
 from typing import List, Optional, Union, Dict, Tuple
 import json
+import networkx as nx
 import argparse
 from pathlib import Path
 
 import numpy as np
+from matplotlib import patches
 from scipy import signal as sg
 from scipy.ndimage import maximum_filter
 from PIL import Image
@@ -11,6 +13,7 @@ import matplotlib.pyplot as plt
 
 # if you wanna iterate over multiple files and json, the default source folder name is this.
 from scipy.signal import convolve2d
+from sklearn.cluster import DBSCAN
 
 DEFAULT_BASE_DIR: str = r"C:\Users\97258\Desktop\cs academy\year 3\Semester B\excelenteam\Check Point\Mobileye-Project\Part_1 - Traffic Light Detection\part_1\part_1"
 
@@ -63,8 +66,136 @@ def find_tfl_lights(c_image: np.ndarray,
 
     return red_x.tolist(), red_y.tolist(),  green_x.tolist(),  green_y.tolist()
 
+# Distance function
+def distance(p1, p2):
+    return ((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2) ** 0.5
+
+def create_rectangle(group):
+    # Find the bounding rectangle
+    min_x = min(p[0] for p in group)
+    max_x = max(p[0] for p in group)
+    min_y = min(p[1] for p in group)
+    max_y = max(p[1] for p in group)
+
+    # Find the width and height of the bounding rectangle
+    width = max_x - min_x
+    height = max_y - min_y
+
+    # Adjust the dimensions according to the given ratio
+    adjusted_width = height * 2.5
+    adjusted_height = width * 4
+
+    # Calculate the top-left and bottom-right coordinates of the final rectangle
+    top_left_x = min_x - (adjusted_width - width) / 2
+    top_left_y = min_y - (adjusted_height - height) / 2
+    bottom_right_x = max_x + (adjusted_width - width) / 2
+    bottom_right_y = max_y + (adjusted_height - height) / 2
+
+    # Ensure the coordinates are within the image bounds
+    top_left_x = max(0, top_left_x)
+    top_left_y = max(0, top_left_y)
+    bottom_right_x = min(1024, bottom_right_x)
+    bottom_right_y = min(2048, bottom_right_y)
+
+    return top_left_x, top_left_y, bottom_right_x, bottom_right_y
+
+# Define a function to create and draw the rectangle
+def create_and_draw_rectangle(group, ax):
+    top_left_x, top_left_y, bottom_right_x, bottom_right_y = create_rectangle(group)
+    # Create a rectangle patch
+    rect = patches.Rectangle((top_left_x, top_left_y), bottom_right_x - top_left_x, bottom_right_y - top_left_y, linewidth=1, edgecolor='r', facecolor='none')
+    # Add the patch to the plot
+    ax.add_patch(rect)
+
+def calculate_radius(group):
+    if len(group) < 2:
+        return 0
+    distances = [distance(p1, p2) for i, p1 in enumerate(group) for j, p2 in enumerate(group) if i < j]
+    return sum(distances) / len(distances)
 
 
+def unite_points(x_coords, y_coords, fixed_radius):
+    points = [(x, y) for x, y in zip(x_coords, y_coords)]
+
+    groups = []
+    grouped_points = set()
+
+    for i, p1 in enumerate(points):
+        if i not in grouped_points:
+            group = [p1]
+            grouped_points.add(i)
+            for j, p2 in enumerate(points):
+                if j != i and j not in grouped_points and distance(p1, p2) < fixed_radius:
+                    group.append(p2)
+                    grouped_points.add(j)
+            if len(group) > 1:
+                groups.append(group)
+    return groups
+
+
+def unite_groups(groups, fixed_radius):
+    # Create a graph
+    G = nx.Graph()
+
+    # Add a node for each group
+    for i in range(len(groups)):
+        G.add_node(i)
+
+    # Add an edge between groups if any point in one group is within the fixed_radius of a point in the other group
+    for i, group1 in enumerate(groups):
+        for j, group2 in enumerate(groups):
+            if i < j: # Avoid double-checking pairs of groups
+                for p1 in group1:
+                    for p2 in group2:
+                        if distance(p1, p2) < fixed_radius:
+                            G.add_edge(i, j)
+                            break
+                    else:
+                        continue
+                    break
+
+    # Find connected components
+    united_groups = []
+    for component in nx.connected_components(G):
+        united_group = []
+        for index in component:
+            united_group.extend(groups[index])
+        united_groups.append(united_group)
+
+    return united_groups
+
+def crop_tfl_rect(c_image: np.ndarray, red_x, red_y, green_x, green_y):
+    cropped = []
+     # Initial fixed radius for grouping points
+    fixed_radius = 10  # You can adjust this based on your data
+
+    groups = unite_points(red_x, red_y, fixed_radius)
+
+    groups = unite_groups(groups, fixed_radius)
+
+    fig, ax = plt.subplots()
+
+    for group in groups:
+        x = [p[0] for p in group]
+        y = [p[1] for p in group]
+        plt.scatter(x, y)
+
+        # Create and draw the rectangle for this group using the radius
+        top_left_x, top_left_y, bottom_right_x, bottom_right_y = create_rectangle(group)
+        rect = patches.Rectangle((top_left_x, top_left_y), bottom_right_x - top_left_x, bottom_right_y - top_left_y,
+                                 linewidth=1, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
+
+        # Cropping the image
+        cropped_image = c_image[int(top_left_y):int(bottom_right_y), int(top_left_x):int(bottom_right_x)]
+        cropped.append(cropped_image)
+
+    plt.xlim(0, 1024)
+    plt.ylim(0, 2048)
+    plt.gca().invert_yaxis()
+    plt.show()
+
+    return cropped
 
 ### GIVEN CODE TO TEST YOUR IMPLENTATION AND PLOT THE PICTURES
 def show_image_and_gt(c_image: np.ndarray, objects: Optional[List[POLYGON_OBJECT]], fig_num: int = None):
@@ -109,6 +240,8 @@ def test_find_tfl_lights(image_path: str, image_json_path: Optional[str]=None, f
     show_image_and_gt(c_image, objects, fig_num)
 
     red_x, red_y, green_x, green_y = find_tfl_lights(c_image)
+
+    guessed_tfl = crop_tfl_rect(c_image, red_x, red_y, green_x, green_y)
     # 'ro': This specifies the format string. 'r' represents the color red, and 'o' represents circles as markers.
     plt.plot(red_x, red_y, 'ro', markersize=4)
     plt.plot(green_x, green_y, 'go', markersize=4)
