@@ -49,22 +49,12 @@ def show_image_and_gt(c_image: np.ndarray, objects: Optional[List[POLYGON_OBJECT
 
 
 
-def create_red_kernel() -> np.array:
+def create_kernel() -> np.array:
     """
     Create a 3x3 kernel that represents a red traffic light.
     """
     kernel = np.zeros((3, 3))
     kernel[1, 1] = 1  # Center pixel for red traffic light
-    kernel[0, 1] = kernel[1, 0] = kernel[1, 2] = kernel[2, 1] = -1  # Surrounding pixels with negative weights
-    return kernel
-
-
-def create_green_kernel() -> np.array:
-    """
-    Create a 3x3 kernel that represents a green traffic light.
-    """
-    kernel = np.zeros((3, 3))
-    kernel[1, 1] = 1  # Center pixel for green traffic light
     kernel[0, 1] = kernel[1, 0] = kernel[1, 2] = kernel[2, 1] = -1  # Surrounding pixels with negative weights
     return kernel
 
@@ -141,8 +131,8 @@ def extract_tfl_coordinates(image: np.array, red_threshold: int, green_threshold
     height, width, _ = image.shape
     image = image[:int(height * 0.65)]
 
-    red_kernel = create_red_kernel()
-    green_kernel = create_green_kernel()
+    red_kernel = create_kernel()
+    green_kernel = create_kernel()
 
     # Normalize the kernels
     normalize_kernel(red_kernel)
