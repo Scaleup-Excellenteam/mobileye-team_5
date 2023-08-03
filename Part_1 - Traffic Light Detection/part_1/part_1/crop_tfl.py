@@ -35,15 +35,16 @@ def create_rectangle(group, color):
 
     # Adjust starting point based on color
     if color == 'green':
-        print(top_left_x)
-        top_left_y -= height * 2 / 3
-        bottom_right_y -= height*2 / 3
+        top_left_y = max(0, top_left_y - height * 2 / 3)
+        bottom_right_y = max(0, bottom_right_y - height * 2 / 3)
 
-        print(top_left_x)
-        # print(bottom_right_x)
     elif color == 'red':
-        top_left_y += height * 2  / 3
-        bottom_right_y += height*2 / 3
+        top_left_y = min(1024, top_left_y + height * 2 / 3)
+        bottom_right_y = min(1024, bottom_right_y + height * 2 / 3)
+
+    # make sure that the values are also clamped from below:
+    top_left_y = max(0, top_left_y)
+    bottom_right_y = max(0, bottom_right_y)
 
     return top_left_x, top_left_y, bottom_right_x, bottom_right_y
 
@@ -108,67 +109,65 @@ def crop_tfl_rect(c_image: np.ndarray, x, y, color):
     for group in groups:
         x = [p[0] for p in group]
         y = [p[1] for p in group]
-        # plt.scatter(x, y)
+        plt.scatter(x, y)
 
 
         # Create and draw the rectangle for this group using the radius
-        top_left_x, top_left_y, bottom_right_x, bottom_right_y = create_rectangle(group ,color)
+        top_left_x, top_left_y, bottom_right_x, bottom_right_y = create_rectangle(group, color)
         rect = patches.Rectangle((top_left_x, top_left_y), bottom_right_x - top_left_x, bottom_right_y - top_left_y,
                                  linewidth=1, edgecolor='r', facecolor='none')
         # Add the patch to the plot
         plt.gca().add_patch(rect)
 
-        # Create and draw the rectangle for this group using the radius
-        index_bottom_right_y, index_top_left_x, index_top_left_y, index_bottom_right_x = create_rectangle(group,color)
-
         # Cropping the image
-        cropped_image = c_image[int(index_top_left_x):int(index_bottom_right_x):,int(index_top_left_y):int(index_bottom_right_y):]
-
+        # cropped_image = c_image[int(index_top_left_x):int(index_bottom_right_x):,int(index_top_left_y):int(index_bottom_right_y):]
+        cropped_image = c_image[int(top_left_y):int(bottom_right_y):, int(top_left_x):int(bottom_right_x):]
 
         cropped.append(cropped_image)
-
-
-
-
+    # display_seq_images(c_image, cropped)
     return cropped
 
 
-import numpy as np
-# import matplotlib.pyplot as plt
-#
-# def plot_images_side_by_side(images):
-#     # Determine the total number of images
-#     n_images = len(images)
-#
-#     # Determine the maximum height and width
-#     max_height = max(img.shape[0] for img in images)
-#     max_width = max(img.shape[1] for img in images)
-#     channels = images[0].shape[2]
-#
-#     # Create an empty array to hold all the images side by side, taking channels into account
-#     combined_image = np.zeros((max_height, max_width * n_images, channels), dtype=images[0].dtype)
-#
-#     # Place each image next to the previous one, handling different sizes
-#     for i, img in enumerate(images):
-#         height, width, _ = img.shape
-#         combined_image[:height, i * max_width:(i * max_width) + width, :] = img
-#
-#     plt.imshow(combined_image.astype(images[0].dtype))
-#     plt.axis([0, 500, 500, 0])  # [xmin, xmax, ymax, ymin]
-#
-#     plt.show()
-#
-#
-#
-# def plot_images_sequentially(images):
-#     for idx, img in enumerate(images):
-#         print(f"Image {idx}:")
-#         print(img) # This prints the pixel values of the image
-#
-#         if img.size > 0: # Check if the image is non-empty
-#             plt.imshow(img)
-#             plt.axis([0, 500, 500, 0])  # [xmin, xmax, ymax, ymin]
-#             plt.show()
-#         else:
-#             print("Empty or zero-size image, skipping.")
+def display_images(original_image, cropped_images):
+    # Calculate the number of subplots needed (original image + cropped images)
+    n_subplots = len(cropped_images) + 1
+
+    # Create subplots with 1 row and n_subplots columns
+    fig, axes = plt.subplots(1, n_subplots, figsize=(100, 100))
+
+    # Plot the original image in the first subplot
+    axes[0].imshow(original_image)
+    axes[0].set_title('Original Image')
+    axes[0].set_xticks([])  # Turn off x-axis tick labels for original image
+    axes[0].set_yticks([])  # Turn off y-axis tick labels for original image
+
+    # Display each cropped image in its own subplot
+    for i, cropped_image in enumerate(cropped_images):
+        axes[i + 1].imshow(cropped_image)
+        axes[i + 1].set_title(f'Cropped {i + 1}')
+        axes[i + 1].set_xticks([])  # Turn off x-axis tick labels
+        axes[i + 1].set_yticks([])  # Turn off y-axis tick labels
+
+    # Set window size
+    plt.gcf().set_size_inches(1000 / plt.gcf().dpi, 1000 / plt.gcf().dpi)
+
+    plt.show()
+
+def display_seq_images(original_image, cropped_images):
+    # Display the original image
+    plt.figure(figsize=(10, 10))
+    plt.imshow(original_image)
+    plt.title('Original Image')
+    plt.xticks([])  # Turn off x-axis tick labels
+    plt.yticks([])  # Turn off y-axis tick labels
+    plt.show()
+
+    # Display each cropped image in its own figure
+    for i, cropped_image in enumerate(cropped_images):
+        plt.figure(figsize=(10, 10))
+        plt.imshow(cropped_image)
+        plt.title(f'Cropped {i + 1}')
+        plt.xticks([])  # Turn off x-axis tick labels
+        plt.yticks([])  # Turn off y-axis tick labels
+        plt.show()
 

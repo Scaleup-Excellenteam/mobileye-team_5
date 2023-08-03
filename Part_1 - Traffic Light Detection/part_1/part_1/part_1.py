@@ -206,8 +206,8 @@ def test_find_tfl_lights(image_path: str, image_json_path: Optional[str]=None, f
     red_cropped = crop_tfl.crop_tfl_rect(c_image, red_x, red_y, 'red')
     green_cropped = crop_tfl.crop_tfl_rect(c_image, green_x, green_y, 'green')
     # 'ro': This specifies the format string. 'r' represents the color red, and 'o' represents circles as markers.
-    plt.plot(red_x, red_y, 'ro', markersize=4)
-    plt.plot(green_x, green_y, 'go', markersize=4)
+    # plt.plot(red_x, red_y, 'ro', markersize=4)
+    # plt.plot(green_x, green_y, 'go', markersize=4)
 
 
 def main(argv=None):
