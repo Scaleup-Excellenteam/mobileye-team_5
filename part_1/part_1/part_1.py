@@ -2,6 +2,8 @@ from typing import List, Optional, Union, Dict, Tuple
 import json
 import argparse
 from pathlib import Path
+import crop_tfl
+
 
 import numpy as np
 from scipy import signal as sg
@@ -67,9 +69,12 @@ def test_find_tfl_lights(image_path: str, image_json_path: Optional[str]=None, f
     show_image_and_gt(c_image, objects, fig_num)
 
     red_x, red_y, green_x, green_y = extract_tfl_coordinates(c_image)
+
+    red_cropped = crop_tfl.crop_tfl_rect(c_image, red_x, red_y, 'red')
+    green_cropped = crop_tfl.crop_tfl_rect(c_image, green_x, green_y, 'green')
     # 'ro': This specifies the format string. 'r' represents the color red, and 'o' represents circles as markers.
-    plt.plot(red_y, red_x, 'ro', markersize=4)
-    plt.plot(green_y, green_x, 'go', markersize=4)
+    plt.plot(red_x, red_y, 'ro', markersize=4)
+    plt.plot(green_x, green_y, 'go', markersize=4)
 
 
 def main(argv=None):

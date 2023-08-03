@@ -133,4 +133,4 @@ def extract_tfl_coordinates(image: np.array) -> Tuple[RED_X_COORDINATES, RED_Y_C
     red_coordinates = np.argwhere(red_filtered)
     green_coordinates = np.argwhere(green_filtered)
 
-    return red_coordinates[:, 0], red_coordinates[:, 1], green_coordinates[:, 0], green_coordinates[:, 1]
+    return red_coordinates[:, 1], red_coordinates[:, 0], green_coordinates[:, 1], green_coordinates[:, 0]
