@@ -51,7 +51,7 @@ def create_red_hsv_mask(image: np.array) -> np.array:
     :return: A binary mask where the red traffic light region is set to 1 and the rest to 0.
     """
     # Define the lower and upper HSV color range for red traffic lights
-    lower_red_color = np.array([0, 90, 90])    # Lower boundary for red color in HSV
+    lower_red_color = np.array([0, 80, 80])    # Lower boundary for red color in HSV
     upper_red_color = np.array([10, 255, 255])   # Upper boundary for red color in HSV
     # Create the HSV color range mask for red traffic lights
     hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
@@ -123,7 +123,7 @@ def extract_tfl_coordinates(image: np.array) -> Tuple[RED_X_COORDINATES, RED_Y_C
 
     # Threshold the convolved images
     red_thresholded = threshold_image(conv_red, 330)
-    green_thresholded = threshold_image(conv_green, 150)
+    green_thresholded = threshold_image(conv_green, 180)
 
     # Apply maximum filter to enhance detection results
     red_filtered = maximum_filter(red_thresholded, size=5)
