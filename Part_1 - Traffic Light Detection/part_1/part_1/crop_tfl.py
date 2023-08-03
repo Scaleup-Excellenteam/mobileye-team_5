@@ -12,7 +12,7 @@ from matplotlib import patches, pyplot as plt
 def distance(p1, p2):
     return ((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2) ** 0.5
 
-def create_rectangle(group):
+def create_rectangle(group, color):
     # Find the bounding rectangle
     min_x = min(p[0] for p in group)
     max_x = max(p[0] for p in group)
@@ -33,13 +33,20 @@ def create_rectangle(group):
     bottom_right_x = max_x + (adjusted_width - width) / 2
     bottom_right_y = max_y + (adjusted_height - height) / 2
 
-    # Ensure the coordinates are within the image bounds
-    top_left_x = max(0, top_left_x)
-    top_left_y = max(0, top_left_y)
-    bottom_right_x = min(1024, bottom_right_x)
-    bottom_right_y = min(2048, bottom_right_y)
+    # Adjust starting point based on color
+    if color == 'green':
+        print(top_left_x)
+        top_left_y -= height * 2 / 3
+        bottom_right_y -= height*2 / 3
+
+        print(top_left_x)
+        # print(bottom_right_x)
+    elif color == 'red':
+        top_left_y += height * 2  / 3
+        bottom_right_y += height*2 / 3
 
     return top_left_x, top_left_y, bottom_right_x, bottom_right_y
+
 
 # Define a function to create and draw the rectangle
 def create_and_draw_rectangle(group, ax):
@@ -59,7 +66,7 @@ def calculate_radius(group):
 def is_connected(p1, p2):
     x1, y1 = p1
     x2, y2 = p2
-    return (abs(x1 - x2) <= 2) and (abs(y1 - y2) <= 2)
+    return (abs(x1 - x2) <= 5) and (abs(y1 - y2) <= 5)
 
 
 
@@ -92,31 +99,34 @@ def unite_points(x_coords, y_coords):
 
     return groups
 
-def crop_tfl_rect(c_image: np.ndarray, red_x, red_y, green_x, green_y):
+def crop_tfl_rect(c_image: np.ndarray, x, y, color):
     cropped = []
 
-    groups = unite_points(red_x, red_y)
+    groups = unite_points(x, y)
+    # plt.imshow(c_image)
 
     for group in groups:
         x = [p[0] for p in group]
         y = [p[1] for p in group]
-        plt.scatter(x, y)
+        # plt.scatter(x, y)
 
 
         # Create and draw the rectangle for this group using the radius
-        top_left_x, top_left_y, bottom_right_x, bottom_right_y = create_rectangle(group)
+        top_left_x, top_left_y, bottom_right_x, bottom_right_y = create_rectangle(group ,color)
         rect = patches.Rectangle((top_left_x, top_left_y), bottom_right_x - top_left_x, bottom_right_y - top_left_y,
                                  linewidth=1, edgecolor='r', facecolor='none')
         # Add the patch to the plot
         plt.gca().add_patch(rect)
-        print(rect)
+
         # Create and draw the rectangle for this group using the radius
-        index_bottom_right_y, index_top_left_x, index_top_left_y, index_bottom_right_x = create_rectangle(group)
+        index_bottom_right_y, index_top_left_x, index_top_left_y, index_bottom_right_x = create_rectangle(group,color)
 
         # Cropping the image
-        cropped_image = c_image[int(index_top_left_x):int(index_bottom_right_x),int(index_top_left_y):int(index_bottom_right_y)]
+        cropped_image = c_image[int(index_top_left_x):int(index_bottom_right_x):,int(index_top_left_y):int(index_bottom_right_y):]
+
 
         cropped.append(cropped_image)
+
 
 
 
