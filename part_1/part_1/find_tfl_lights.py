@@ -59,6 +59,55 @@ def apply_watershed(image: np.array, markers: np.array) -> np.array:
     return labels
 
 
+def calculate_median(coord_list):
+    """
+    Calculate the median of coordinates in a cluster.
+
+    Parameters:
+        coord_list (list): A list of coordinate tuples.
+
+    Returns:
+        tuple: The median x and y coordinates.
+    """
+    x_coords, y_coords = zip(*coord_list)
+    median_x, median_y = int(np.median(x_coords)), int(np.median(y_coords))
+    return median_x, median_y
+
+
+def find_clusters(coord_list, threshold):
+    """
+    Find clusters of coordinates that are close to each other.
+
+    Parameters:
+        coord_list (list): A list of coordinate tuples.
+        threshold (int): The minimum number of points required to form a cluster.
+
+    Returns:
+        list: A list of clusters, each containing coordinate tuples.
+    """
+    clusters = []
+    coord_list = set(coord_list)
+
+    while coord_list:
+        seed = coord_list.pop()
+        cluster = {seed}
+        stack = [seed]
+
+        while stack:
+            x, y = stack.pop()
+            neighbors = [(x + dx, y + dy) for dx in [-1, 0, 1] for dy in [-1, 0, 1]]
+            for neighbor in neighbors:
+                if neighbor in coord_list:
+                    stack.append(neighbor)
+                    coord_list.remove(neighbor)
+                    cluster.add(neighbor)
+
+        if len(cluster) > threshold:
+            clusters.append(cluster)
+
+    return clusters
+
+
 def extract_tfl_coordinates(image: np.array) -> Tuple[List[int], List[int], List[int], List[int]]:
     """
     Extract red and green traffic light coordinates from the input image.
@@ -107,6 +156,25 @@ def extract_tfl_coordinates(image: np.array) -> Tuple[List[int], List[int], List
                             elif np.mean(hue_values) > 50:  # Threshold for green light filtering
                                 green_x.extend(x.tolist())
                                 green_y.extend(y.tolist())
+
+    # Step 6: Calculate median of circular shapes for cluster groups
+    red_coords = list(zip(red_x, red_y))
+    green_coords = list(zip(green_x, green_y))
+
+    red_clusters = find_clusters(red_coords, threshold=5)  # Adjust threshold as needed
+    green_clusters = find_clusters(green_coords, threshold=5)  # Adjust threshold as needed
+
+    red_x, red_y = [], []
+    for cluster in red_clusters:
+        median_x, median_y = calculate_median(cluster)
+        red_x.append(median_x)
+        red_y.append(median_y)
+
+    green_x, green_y = [], []
+    for cluster in green_clusters:
+        median_x, median_y = calculate_median(cluster)
+        green_x.append(median_x)
+        green_y.append(median_y)
 
     return red_x, red_y, green_x, green_y
 
