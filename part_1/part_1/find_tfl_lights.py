@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Any
 import numpy as np
 from scipy import ndimage
 from PIL import Image
@@ -39,7 +39,6 @@ def apply_white_top_hat(image: np.array) -> np.array:
     """
     grayscale_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     kernel = np.ones((30, 30), np.uint8)
-    print(kernel)
     top_hat_image = cv2.morphologyEx(grayscale_image, cv2.MORPH_TOPHAT, kernel)
     return top_hat_image
 
@@ -109,7 +108,23 @@ def find_clusters(coord_list, threshold):
     return clusters
 
 
-def extract_tfl_coordinates(image: np.array) -> Tuple[List[int], List[int], List[int], List[int]]:
+def calculate_diameter(contour):
+    """
+    Calculate the diameter of a contour.
+
+    Parameters:
+        contour (numpy.ndarray): Contour points as a NumPy array.
+
+    Returns:
+        float: The diameter value.
+    """
+    _, radius = cv2.minEnclosingCircle(contour)
+    diameter = 2 * radius
+    return diameter
+
+
+def extract_tfl_coordinates(image: np.array) -> tuple[
+    list[Any], list[Any], list[Any], list[Any], list[float], list[float]]:
     """
     Extract red and green traffic light coordinates from the input image.
 
@@ -121,7 +136,7 @@ def extract_tfl_coordinates(image: np.array) -> Tuple[List[int], List[int], List
     """
     # Step 1: Cut off the lower part of the image
     height, width, _ = image.shape
-    image = image[:int(height * 0.65)]
+    image = image[:int(height * 0.50)]
 
     # Step 2: Apply white top hat morphology
     top_hat_image = apply_white_top_hat(image)
@@ -166,17 +181,30 @@ def extract_tfl_coordinates(image: np.array) -> Tuple[List[int], List[int], List
     green_clusters = find_clusters(green_coords, threshold=5)  # Adjust threshold as needed
 
     red_x, red_y = [], []
-    for cluster in red_clusters:
-        median_x, median_y = calculate_median(cluster)
-        red_x.append(median_x)
-        red_y.append(median_y)
 
     green_x, green_y = [], []
+
+    red_diameters, green_diameters = [], []
+    for cluster in red_clusters:
+        median_x, median_y = calculate_median(cluster)
+        contour = np.array(list(cluster))
+        diameter = calculate_diameter(contour)
+        if diameter >= 3:
+            red_diameters.append(diameter)
+            red_x.append(median_x)
+            red_y.append(median_y)
+
     for cluster in green_clusters:
         median_x, median_y = calculate_median(cluster)
-        green_x.append(median_x)
-        green_y.append(median_y)
+        contour = np.array(list(cluster))
+        diameter = calculate_diameter(contour)
+        if diameter >= 3:
+            green_diameters.append(diameter)
+            green_x.append(median_x)
+            green_y.append(median_y)
 
-    return red_x, red_y, green_x, green_y
+    print("green_x: ", green_x, " green_y:", green_y, " green_diameters: ", green_diameters)
+
+    return red_x, red_y, green_x, green_y, red_diameters, green_diameters
 
 

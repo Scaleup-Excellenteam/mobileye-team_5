@@ -4,7 +4,6 @@ import argparse
 from pathlib import Path
 import crop_tfl
 
-
 import numpy as np
 from scipy import signal as sg
 from scipy.ndimage import maximum_filter, label
@@ -14,7 +13,7 @@ import cv2
 from find_tfl_lights import extract_tfl_coordinates
 
 # if you wanna iterate over multiple files and json, the default source folder name is this.
-DEFAULT_BASE_DIR: str = 'INSERT_YOUR_DIR_WITH_PNG_AND_JSON_HERE'
+DEFAULT_BASE_DIR: str = 'Image_1'
 
 # The label we wanna look for in the polygons json file
 TFL_LABEL = ['traffic light']
@@ -68,7 +67,7 @@ def test_find_tfl_lights(image_path: str, image_json_path: Optional[str]=None, f
 
     show_image_and_gt(c_image, objects, fig_num)
 
-    red_x, red_y, green_x, green_y = extract_tfl_coordinates(c_image)
+    red_x, red_y, green_x, green_y, red_diameters, green_diameters = extract_tfl_coordinates(c_image)
 
     red_cropped = crop_tfl.crop_tfl_rect(c_image, red_x, red_y, 'red')
     green_cropped = crop_tfl.crop_tfl_rect(c_image, green_x, green_y, 'green')
