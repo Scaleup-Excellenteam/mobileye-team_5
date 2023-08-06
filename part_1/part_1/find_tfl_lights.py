@@ -39,6 +39,7 @@ def apply_white_top_hat(image: np.array) -> np.array:
     """
     grayscale_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     kernel = np.ones((30, 30), np.uint8)
+    print(kernel)
     top_hat_image = cv2.morphologyEx(grayscale_image, cv2.MORPH_TOPHAT, kernel)
     return top_hat_image
 
@@ -126,7 +127,7 @@ def extract_tfl_coordinates(image: np.array) -> Tuple[List[int], List[int], List
     top_hat_image = apply_white_top_hat(image)
 
     # Step 3: Select the bright points as markers
-    threshold_value = 150  # You can adjust this threshold value
+    threshold_value = 150
     _, markers = cv2.threshold(top_hat_image, threshold_value, 255, cv2.THRESH_BINARY)
 
     # Step 4: Apply a region growing algorithm (watershed)

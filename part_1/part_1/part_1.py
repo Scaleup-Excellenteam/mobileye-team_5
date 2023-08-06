@@ -26,9 +26,6 @@ GREEN_X_COORDINATES = List[int]
 GREEN_Y_COORDINATES = List[int]
 
 
-
-
-
 ### GIVEN CODE TO TEST YOUR IMPLENTATION AND PLOT THE PICTURES
 def show_image_and_gt(c_image: np.ndarray, objects: Optional[List[POLYGON_OBJECT]], fig_num: int = None):
     # ensure a fresh canvas for plotting the image and objects.
@@ -73,8 +70,8 @@ def test_find_tfl_lights(image_path: str, image_json_path: Optional[str]=None, f
 
     red_x, red_y, green_x, green_y = extract_tfl_coordinates(c_image)
 
-    # red_cropped = crop_tfl.crop_tfl_rect(c_image, red_x, red_y, 'red')
-    # green_cropped = crop_tfl.crop_tfl_rect(c_image, green_x, green_y, 'green')
+    red_cropped = crop_tfl.crop_tfl_rect(c_image, red_x, red_y, 'red')
+    green_cropped = crop_tfl.crop_tfl_rect(c_image, green_x, green_y, 'green')
     # 'ro': This specifies the format string. 'r' represents the color red, and 'o' represents circles as markers.
     plt.plot(red_x, red_y, 'ro', markersize=4)
     plt.plot(green_x, green_y, 'go', markersize=4)
