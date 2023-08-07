@@ -203,8 +203,6 @@ def extract_tfl_coordinates(image: np.array) -> tuple[
             green_x.append(median_x)
             green_y.append(median_y)
 
-    print("green_x: ", green_x, " green_y:", green_y, " green_diameters: ", green_diameters)
-
     return red_x, red_y, green_x, green_y, red_diameters, green_diameters
 
 
