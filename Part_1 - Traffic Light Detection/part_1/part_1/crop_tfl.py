@@ -1,289 +1,211 @@
-from collections import deque
-import numpy as np
-from matplotlib import patches, pyplot as plt
+import json
+from typing import Dict, Any, List, Union
 
-'''
-Constants:
-    - WIDTH_MULTIPLIER (float): Adjusts the width of the bounding rectangle relative to the width of the points group.
-    - HEIGHT_MULTIPLIER (float): Adjusts the height of the bounding rectangle relative to the height of the points group.
-    - VERTICAL_ADJUSTMENT_GREEN (float): Adjusts the vertical position of the bounding rectangle for green traffic lights.
-    - VERTICAL_ADJUSTMENT_RED (float): Adjusts the vertical position of the bounding rectangle for red traffic lights.
-'''
-# Constants for adjusting the dimensions of the bounding rectangle
-WIDTH_MULTIPLIER = 2.5
-HEIGHT_MULTIPLIER = 4
-VERTICAL_ADJUSTMENT_GREEN = 2 / 3
-VERTICAL_ADJUSTMENT_RED = 2 / 3
-
-# Define the threshold for considering points as connected
-CONNECTED_THRESHOLD = 5
+import pandas as pd
+from matplotlib.patches import Polygon
+from pandas import DataFrame
+from pathlib import Path
+from typing import List
 
 
-# Distance function
-def distance(p1, p2):
-    return ((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2) ** 0.5
+
+SEQ_IMAG: str = 'seq_imag'  # Serial number of the image
+NAME: str = 'name'
+IMAG_PATH: str = 'imag_path'
+GTIM_PATH: str = 'gtim_path'
+JSON_PATH: str = 'json_path'
+X: str = 'x'
+Y: str = 'y'
+COLOR: str = 'color'
+# The label we wanna look for in the polygons json file
+TFL_LABEL = ['traffic light']
+POLYGON_OBJECT = Dict[str, Union[str, List[int]]]
+# # Data CSV columns:
+CSV_INPUT: List[str] = [SEQ_IMAG, NAME, IMAG_PATH, JSON_PATH, GTIM_PATH]
+CSV_OUTPUT: List[str] = [SEQ_IMAG, NAME, IMAG_PATH, JSON_PATH, GTIM_PATH, X, Y, COLOR]
+
+TRAIN_TEST_VAL = 'train_test_val'
+TRAIN = 'train'
+TEST = 'test'
+VALIDATION = 'validation'
+
+BASE_SNC_DIR = Path.cwd()
+DATA_DIR: Path = (BASE_SNC_DIR / 'data')
+FULL_IMAGES_DIR: Path = 'fullImages'  # Where we write the full images
+CROP_DIR: Path = DATA_DIR / 'crops'
+PART_IMAGE_SET: Path = DATA_DIR / 'images_set'
+
+# # Crop size:
+DEFAULT_CROPS_W: int = 32
+DEFAULT_CROPS_H: int = 96
+
+SEQ: str = 'seq'  # The image seq number -> for tracing back the original image
+IS_TRUE: str = 'is_true'  # Is it a traffic light or not.
+IS_IGNORE: str = 'is_ignore'
+# investigate the reason after
+CROP_PATH: str = 'path'
+X0: str = 'x0'  # The bigger x value (the right corner)
+X1: str = 'x1'  # The smaller x value (the left corner)
+Y0: str = 'y0'  # The smaller y value (the lower corner)
+Y1: str = 'y1'  # The bigger y value (the higher corner)
+COL: str = 'col'
+
+RELEVANT_IMAGE_PATH: str = 'path'
+ZOOM: str = 'zoom'  # If you zoomed in the picture, then by how much? (0.5. 0.25 etc.).
+PATH: str = 'path'
+
+# # CNN input CSV columns:
+CROP_RESULT: List[str] = [SEQ, IS_TRUE, IS_IGNORE, CROP_PATH, X0, X1, Y0, Y1, COL]
+ATTENTION_RESULT: List[str] = [RELEVANT_IMAGE_PATH, X, Y, ZOOM, COL]
+
+# # Files path
+BASE_SNC_DIR: Path = Path.cwd().parent
+ATTENTION_PATH: Path = DATA_DIR / 'attention_results'
+
+ATTENTION_CSV_NAME: str = 'attention_results.csv'
+CROP_CSV_NAME: str = 'crop_results.csv'
+
+MODELS_DIR: Path = DATA_DIR / 'models'  # Where we explicitly copy/save good checkpoints for "release"
+LOGS_DIR: Path = MODELS_DIR / 'logs'  # Each model will have a folder. TB will show all models
 
 
-def create_rectangle_bound(group, color):
+# # File names (directories to be appended automatically)
+TFLS_CSV: str = 'tfls.csv'
+CSV_OUTPUT_NAME: str = 'results.csv'
+
+def make_crop(x, y, color, zoom, *args, **kwargs):
     """
-    Create bounding rectangle coordinates for a given group of points.
-
-    This function calculates the bounding rectangle coordinates (top-left and bottom-right) around a group of points.
-    The calculated rectangle is adjusted based on the color to fine-tune the position of the rectangle.
-
-    Parameters:
-        group (list): A list of tuples representing the points to form the bounding rectangle around.
-        color (str): The color of the rectangle. It can be either 'red' or 'green' and is used to adjust the rectangle's
-                     vertical position.
-
-    Returns:
-        tuple: A tuple containing four elements - the top-left x coordinate, top-left y coordinate, bottom-right x
-               coordinate, and bottom-right y coordinate of the bounding rectangle.
-
-    Note:
-        - The `group` parameter should be a list of tuples, where each tuple contains the x and y coordinates of a point.
-        - The `color` parameter can be either 'red' or 'green', depending on the traffic light color the rectangle
-          corresponds to. It is used to adjust the vertical position of the rectangle to better fit the traffic light.
-
+    The function that creates the crops from the image.
+    Your return values from here should be the coordinates of the crops in this format (x0, x1, y0, y1, crop content):
+    'x0'  The bigger x value (the right corner)
+    'x1'  The smaller x value (the left corner)
+    'y0'  The smaller y value (the lower corner)
+    'y1'  The bigger y value (the higher corner)
     """
-    # Find the bounding rectangle
-    min_x = min(p[0] for p in group)
-    max_x = max(p[0] for p in group)
-    min_y = min(p[1] for p in group)
-    max_y = max(p[1] for p in group)
+    # Define the size of the crop region around the TFL
+    crop_width = DEFAULT_CROPS_W #* zoom
+    crop_height = DEFAULT_CROPS_H # * zoom
+    y0_offset = 0
+    y1_offset = 0
+    # Adjust y0 offset and y1 offset based on color
+    if color == 'r':
+        y0_offset = 1 / 3
+        y1_offset = 2 / 3
+    elif color == 'g':
+        y0_offset = 2 / 3
+        y1_offset = 1 / 3
 
-    # Find the width and height of the bounding rectangle
-    width = max_x - min_x
-    height = max_y - min_y
+    # Calculate the default cropping region around the TFL
+    x0 = x + crop_width // 2
+    x1 = x - crop_width // 2
+    y0 = y - (crop_height * y0_offset)
+    y1 = y + (crop_height * y1_offset)
 
-    # Adjust the dimensions according to the given ratio
-    adjusted_width = width * WIDTH_MULTIPLIER
-    adjusted_height = height * HEIGHT_MULTIPLIER
-
-    # Calculate the top-left and bottom-right coordinates of the final rectangle
-    top_left_x = min_x - (adjusted_width - width) / 2
-    top_left_y = min_y - (adjusted_height - height) / 2
-    bottom_right_x = max_x + (adjusted_width - width) / 2
-    bottom_right_y = max_y + (adjusted_height - height) / 2
-
-    # Adjust starting point based on color
-    if color == 'green':
-        top_left_y = max(0, top_left_y - height * VERTICAL_ADJUSTMENT_GREEN)
-        bottom_right_y = max(0, bottom_right_y - height * VERTICAL_ADJUSTMENT_GREEN)
-    elif color == 'red':
-        top_left_y = min(1024, top_left_y + height * VERTICAL_ADJUSTMENT_RED)
-        bottom_right_y = min(1024, bottom_right_y + height * VERTICAL_ADJUSTMENT_RED)
-
-    # Make sure that the values are also clamped from below:
-    top_left_y = max(0, top_left_y)
-    bottom_right_y = max(0, bottom_right_y)
-
-    return top_left_x, top_left_y, bottom_right_x, bottom_right_y
+    return x0, x1, y0, y1, 'crop_data'
 
 
-def calculate_radius(group):
+def check_crop(image_json_path, x0, x1, y0, y1):
     """
-    Calculate the radius of a group of points.
-
-    This function computes the average distance between all pairs of points in the group to estimate the radius. It
-    provides an approximate measure of how spread out the points are from their center.
-
-    Parameters:
-        group (list): A list of tuples representing the points for which the radius needs to be calculated.
-
-    Returns:
-        float: The estimated radius of the group of points. If the group has less than 2 points, the radius is considered
-               as 0.
-
-    Note:
-        - The `group` parameter should be a list of tuples, where each tuple contains the x and y coordinates of a point.
-        - The radius is computed as the average distance between all possible pairs of points in the group.
+    Here you check if your crop contains a traffic light or not.
+    Try using the ground truth to do that (Hint: easier than you think for the simple cases, and if you found a hard
+    one, just ignore it for now :). )
     """
-    if len(group) < 2:
-        return 0
+    image_json_path = PART_IMAGE_SET / image_json_path
+    image_json = json.load(Path(image_json_path).open())
+    traffic_light_polygons: List[POLYGON_OBJECT] = [image_object for image_object in image_json['objects']
+                                                    if image_object['label'] in TFL_LABEL]
+    is_true, ignore = False, False
+    cropped_polygon = Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
 
-    distances = [distance(p1, p2) for i, p1 in enumerate(group) for j, p2 in enumerate(group) if i < j]
-    return sum(distances) / len(distances)
+    count_traffic_lights = 0
+    for tl_polygon in traffic_light_polygons:
+        if cropped_polygon.contains(Polygon(tl_polygon['polygon'])):
+            count_traffic_lights += 1
+            if count_traffic_lights >= 2:
+                ignore = True
+                break
+            is_true = True
+
+    return is_true, ignore
 
 
-def is_connected(p1, p2):
+def save_for_part_2(crops_df: DataFrame):
     """
-    Check if two points are connected.
-
-    This function checks if two points are connected, i.e., if they are close to each other within a certain threshold. It
-    is used to determine if two points should be considered as part of the same group.
-
-    Parameters:
-        p1 (tuple): A tuple representing the first point with x and y coordinates.
-        p2 (tuple): A tuple representing the second point with x and y coordinates.
-
-    Returns:
-        bool: True if the two points are connected (within a certain threshold), False otherwise.
-
-    Note:
-        - The `p1` and `p2` parameters should be tuples with two elements representing the x and y coordinates of the
-          respective points.
+    *** No need to touch this. ***
+    Saves the result DataFrame containing the crops data in the relevant folder under the relevant name for part 2.
     """
-    x1, y1 = p1
-    x2, y2 = p2
-
-    return (abs(x1 - x2) <= CONNECTED_THRESHOLD) and (abs(y1 - y2) <= CONNECTED_THRESHOLD)
-
-
-def unite_points(x_coords, y_coords):
-    """
-    Group connected points based on their x and y coordinates.
-
-    This function takes two lists, `x_coords` and `y_coords`, representing the x and y coordinates of points, respectively.
-    It groups connected points together and returns a list of groups, where each group is a list of connected points.
-
-    Parameters:
-        x_coords (list): A list of integers or floats representing the x coordinates of points.
-        y_coords (list): A list of integers or floats representing the y coordinates of points.
-
-    Returns:
-        list: A list of groups, where each group is a list of connected points. Each point in the group is represented
-              as a tuple (x, y), where x is the x coordinate and y is the y coordinate.
-
-    Example:
-        x_coords = [1, 2, 3, 5, 6]
-        y_coords = [1, 2, 3, 5, 6]
-        result = unite_points(x_coords, y_coords)
-        # Result will be: [[(1, 1), (2, 2), (3, 3)], [(5, 5), (6, 6)]]
-
-    Note:
-        - The function uses a breadth-first search (BFS) algorithm to find and group connected points efficiently.
-        - The `is_connected` function must be defined and provided separately to determine if two points are connected.
-        - The function will only consider points connected in a grid-like manner (horizontal and vertical connections).
-          If you need to consider diagonal connections as well, you must modify the `is_connected` function accordingly.
-    """
-    points = [(x, y) for x, y in zip(x_coords, y_coords)]
-
-    groups = []
-    grouped_points = set()
-
-    for i, p1 in enumerate(points):
-        if i not in grouped_points:
-            group = [p1]
-            grouped_points.add(i)
-
-            # Use a deque to represent the queue of points to be processed
-            queue = deque([i])
-
-            while queue:
-                current_point_idx = queue.popleft()
-                current_point = points[current_point_idx]
-
-                for j, p2 in enumerate(points):
-                    if j != current_point_idx and j not in grouped_points and is_connected(current_point, p2):
-                        group.append(p2)
-                        grouped_points.add(j)
-                        queue.append(j)  # Enqueue the point to be processed later
-
-            if len(group) > 1:
-                groups.append(group)
-
-    return groups
+    if not ATTENTION_PATH.exists():
+        ATTENTION_PATH.mkdir()
+    crops_sorted: DataFrame = crops_df.sort_values(by=SEQ)
+    crops_sorted.to_csv(ATTENTION_PATH / CROP_CSV_NAME, index=False)
 
 
-def crop_tfl_rect(c_image: np.ndarray, x, y, color):
-    """
-    Crop suspected Traffic Light (TFL) regions from the given image based on grouped points.
+def create_crops(df: DataFrame, IGNOR=None) -> DataFrame:
+    # Your goal in this part is to take the coordinates you have in the df, run on it, create crops from them, save them
+    # in the 'data' folder, then check if crop you have found is correct (meaning the TFL is fully contained in the
+    # crop) by comparing it to the ground truth and in the end right all the result data you have in the following
+    # DataFrame (for doc about each field and its input, look at 'CROP_RESULT')
+    #
+    # *** IMPORTANT ***
+    # All crops should be the same size or smaller!!!
+    # Run this from your 'code' folder so that it will be in the right relative folder from your data folder.
 
-    This function takes an image represented as a NumPy array `c_image`, along with the x and y coordinates of points
-    representing a set of grouped points that are suspected to form rectangles around traffic lights. It creates a
-    rectangle around each group of points and crops the corresponding regions from the image. The cropped regions are
-    collected and returned as a list, where each cropped image potentially contains a traffic light.
+    # creates a folder for you to save the crops in, recommended not must
+    if not CROP_DIR.exists():
+        CROP_DIR.mkdir()
 
-    Parameters:
-        c_image (np.ndarray): The input image as a NumPy array (e.g., RGB image represented as shape [height, width, 3]).
-        x (list): A list of integers representing the x coordinates of the grouped points forming rectangles.
-        y (list): A list of integers representing the y coordinates of the grouped points forming rectangles.
-        color (str): The color of the rectangle to be drawn. It can be any valid color string supported by Matplotlib.
+    # For documentation about each key end what it means, click on 'CROP_RESULT' and see for each value what it means.
+    # You wanna stick with this DataFrame structure because its output is the same as the input for the next stages.
+    result_df = DataFrame(columns=CROP_RESULT)
 
-    Returns:
-        list: A list of NumPy arrays, where each array represents a cropped region of the input image corresponding to
-              a suspected traffic light. Each cropped region is a NumPy array with shape [height, width, 3].
+    # A dict containing the row you want to insert into the result DataFrame.
+    result_template: Dict[Any] = {SEQ: '', IS_TRUE: '', IGNOR: '', CROP_PATH: '', JSON_PATH: '', X0: '', X1: '', Y0: '', Y1: '',
+                                  COL: ''}
+    for index, row in df.iterrows():
+        # Save sequence TFL in each image
+        result_template[SEQ] = row[SEQ]
+        # Save color TFL in each image
+        result_template[COL] = row[COL]
 
-    Note:
-        - The function assumes that the points are already grouped using the `unite_points` function, which must be called
-          before using this function to form rectangles around potential traffic lights.
-        - The `create_rectangle_bound` function must be defined separately to create a rectangle bound around the group
-          of points. The rectangle is specified by its top-left (x, y) coordinates and its bottom-right (x, y) coordinates.
-        - The function uses Matplotlib to visualize the points and draw the rectangles on the image (optional). If
-          visualization is not required, consider removing the Matplotlib-related code from this function.
-        - Make sure that the `color` parameter is a valid Matplotlib color string. For example, 'r' for red, 'g' for green,
-          'b' for blue, 'c' for cyan, 'm' for magenta, 'y' for yellow, 'k' for black, 'w' for white, etc.
-        - After cropping the images, further processing can be applied to identify and classify the traffic lights within
-          each cropped region, depending on the specific use case or application.
-    """
-    cropped = []
+        # Extract image_path
+        image_path = row[CROP_PATH]
 
-    # grouped point that suspect as TFL for bounding
-    groups = unite_points(x, y)
+        # Extrac corp rect from
+        x0, x1, y0, y1, crop = make_crop(row[X], row[Y], row[COL], row[ZOOM])
+        result_template[X0], result_template[X1], result_template[Y0], result_template[Y1] = x0, x1, y0, y1
 
-    for group in groups:
-        x = [p[0] for p in group]
-        y = [p[1] for p in group]
-        plt.scatter(x, y)
-        plt.scatter(x, y)
+        # crop.save(CROP_DIR / crop_path)
 
-        # Create the rectangle for this group
-        top_left_x, top_left_y, bottom_right_x, bottom_right_y = create_rectangle_bound(group, color)
-        rect = patches.Rectangle((top_left_x, top_left_y), bottom_right_x - top_left_x, bottom_right_y - top_left_y,
-                                 linewidth=1, edgecolor='r', facecolor='none')
-        # Add the patch to the plot
-        plt.gca().add_patch(rect)
+        # Save json path (Anton need to pass from part 1)
+        image_json_path = image_path.replace('_leftImg8bit.png', '_gtFine_polygons.json')
+        result_template[JSON_PATH] = image_json_path
 
-        # Cropping the image by rectangle bound
-        cropped_image = c_image[int(top_left_y):int(bottom_right_y):, int(top_left_x):int(bottom_right_x):]
+        # Check crop rectangle if it TFL or not, ignore if it parts of TFL, double TFL,
+        result_template[IS_TRUE], result_template[IS_IGNORE] = check_crop(image_json_path, x0, x1, y0, y1)
 
-        cropped.append(cropped_image)
-    # display_images(c_image, cropped)
-    # display_seq_images(c_image, cropped)
-    return cropped
+        # Create unique path for crop TFL
+        if result_template[IS_IGNORE]:
+            tag = 'i'
+        else:
+            tag = 'T' if result_template[IS_TRUE] else 'F'
+
+        crop_path = f'/data/crops/{image_path[:-4]}_{row[COL]}{tag}_{index}'
+
+        # Save unique path
+        result_template[CROP_PATH] = crop_path
+
+        # added to current row to the result DataFrame that will serve you as the input to part 2 B).
+        result_df = result_df.append(result_template, ignore_index=True)
+
+    # A Short function to help you save the whole thing - your welcome ;)
+    save_for_part_2(result_df)
+    return result_df
 
 
-def display_images(original_image, cropped_images):
-    # Calculate the number of subplots needed (original image + cropped images)
-    n_subplots = len(cropped_images) + 1
+def main():
+    df = pd.read_csv(BASE_SNC_DIR/ATTENTION_PATH/ATTENTION_CSV_NAME)
+    crop_df = create_crops(df)
 
-    # Create subplots with 1 row and n_subplots columns
-    fig, axes = plt.subplots(1, n_subplots, figsize=(100, 100))
 
-    # Plot the original image in the first subplot
-    axes[0].imshow(original_image)
-    axes[0].set_title('Original Image')
-    axes[0].set_xticks([])  # Turn off x-axis tick labels for original image
-    axes[0].set_yticks([])  # Turn off y-axis tick labels for original image
-
-    # Display each cropped image in its own subplot
-    for i, cropped_image in enumerate(cropped_images):
-        axes[i + 1].imshow(cropped_image)
-        axes[i + 1].set_title(f'Cropped {i + 1}')
-        axes[i + 1].set_xticks([])  # Turn off x-axis tick labels
-        axes[i + 1].set_yticks([])  # Turn off y-axis tick labels
-
-    # Set window size
-    plt.gcf().set_size_inches(1000 / plt.gcf().dpi, 1000 / plt.gcf().dpi)
-
-    plt.show()
-
-def display_seq_images(original_image, cropped_images):
-    # Display the original image
-    plt.figure(figsize=(10, 10))
-    plt.imshow(original_image)
-    plt.title('Original Image')
-    plt.xticks([])  # Turn off x-axis tick labels
-    plt.yticks([])  # Turn off y-axis tick labels
-    plt.show()
-
-    # Display each cropped image in its own figure
-    for i, cropped_image in enumerate(cropped_images):
-        plt.figure(figsize=(10, 10))
-        plt.imshow(cropped_image)
-        plt.title(f'Cropped {i + 1}')
-        plt.xticks([])  # Turn off x-axis tick labels
-        plt.yticks([])  # Turn off y-axis tick labels
-        plt.show()
-
+if __name__ == '__main__':
+    main()
