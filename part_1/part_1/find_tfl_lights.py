@@ -1,8 +1,9 @@
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Dict
 import numpy as np
 from scipy import ndimage
 from PIL import Image
 import cv2
+import csv
 
 # reference for the algorithm used below :
 # Blog: https://medium.com/@kenan.r.alkiek/https-medium-com-kenan-r-alkiek-traffic-light-recognition-505d6ab913b1
@@ -108,6 +109,28 @@ def find_clusters(coord_list, threshold):
     return clusters
 
 
+def save_traffic_light_coordinates_to_csv(data, csv_file):
+    """
+    Save traffic light coordinates to a CSV file.
+
+    Parameters:
+        data (list): A list of tuples containing the data to be saved.
+        csv_file (str): The filename for the CSV file.
+
+    Returns:
+        None
+    """
+    fieldnames = ["Sequence", "Image Path", "JSON Path", "GT Path", "X Coordinate", "Y Coordinate", "Zoom", "Color"]
+    with open(csv_file, "a", newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+
+        # Write header if the file is empty
+        if f.tell() == 0:
+            writer.writeheader()
+
+        writer.writerows(data)
+
+
 def calculate_diameter(contour):
     """
     Calculate the diameter of a contour.
@@ -123,7 +146,30 @@ def calculate_diameter(contour):
     return diameter
 
 
-def extract_tfl_coordinates(image: np.array) -> tuple[
+def calculate_zoom(diameters):
+    """
+    Calculate the zoom values based on the diameters of detected traffic lights.
+
+    Parameters:
+        diameters (list): A list of diameters of detected traffic lights.
+
+    Returns:
+        list: A list of zoom values corresponding to each diameter.
+    """
+    zoom_values = []
+    for diameter in diameters:
+        if diameter >= 32:
+            zoom_values.append(1.0)
+        elif diameter >= 16:
+            zoom_values.append(0.5)
+        elif diameter >= 8:
+            zoom_values.append(0.25)
+        else:
+            zoom_values.append(0.125)
+    return zoom_values
+
+
+def extract_tfl_coordinates(image: np.array, image_path: str, image_json_path, image_GT_path) -> tuple[
     list[Any], list[Any], list[Any], list[Any], list[float], list[float]]:
     """
     Extract red and green traffic light coordinates from the input image.
@@ -203,6 +249,43 @@ def extract_tfl_coordinates(image: np.array) -> tuple[
             green_x.append(median_x)
             green_y.append(median_y)
 
+    # Prepare data for saving into CSV
+    data = []
+    counter = 0
+
+    zoom_values = calculate_zoom(red_diameters + green_diameters)
+
+    for x, y, color, diameter, zoom in zip(red_x, red_y, ['r'] * len(red_x), red_diameters, zoom_values[:len(red_x)]):
+        data.append({
+            "Sequence": counter,
+            "Image Path": image_path,
+            "JSON Path": image_json_path,
+            "GT Path": image_GT_path,
+            "X Coordinate": x,
+            "Y Coordinate": y,
+            "Zoom": zoom,
+            "Color": color
+        })
+        counter += 1
+    for x, y, color, diameter, zoom in zip(green_x, green_y, ['g'] * len(green_x), green_diameters, zoom_values[len(red_x):]):
+        data.append({
+            "Sequence": counter,
+            "Image Path": image_path,
+            "JSON Path": image_json_path,
+            "GT Path": image_GT_path,
+            "X Coordinate": x,
+            "Y Coordinate": y,
+            "Zoom": zoom,
+            "Color": color
+        })
+        counter += 1
+
+    csv_file = "attention_results.csv"
+    save_traffic_light_coordinates_to_csv(data, csv_file)
+
     return red_x, red_y, green_x, green_y, red_diameters, green_diameters
+
+
+
 
 

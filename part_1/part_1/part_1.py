@@ -50,7 +50,8 @@ def show_image_and_gt(c_image: np.ndarray, objects: Optional[List[POLYGON_OBJECT
             plt.legend()
 
 
-def test_find_tfl_lights(image_path: str, image_json_path: Optional[str]=None, fig_num=None):
+def test_find_tfl_lights(image_path: str, image_json_path: Optional[str] = None, image_GT_path: Optional[str] = None,
+                         fig_num=None):
     """
     Run the traffic light detection code and plot the results.
     """
@@ -67,7 +68,9 @@ def test_find_tfl_lights(image_path: str, image_json_path: Optional[str]=None, f
 
     show_image_and_gt(c_image, objects, fig_num)
 
-    red_x, red_y, green_x, green_y, red_diameters, green_diameters = extract_tfl_coordinates(c_image)
+    red_x, red_y, green_x, green_y, red_diameters, green_diameters = extract_tfl_coordinates(c_image, image_path,
+                                                                                             image_json_path,
+                                                                                             image_GT_path)
 
     red_cropped = crop_tfl.crop_tfl_rect(c_image, red_x, red_y, 'red')
     green_cropped = crop_tfl.crop_tfl_rect(c_image, green_x, green_y, 'green')
@@ -102,7 +105,9 @@ def main(argv=None):
             image_path: str = image.as_posix()
             path: Optional[str] = image_path.replace('_leftImg8bit.png', '_gtFine_polygons.json')
             image_json_path: Optional[str] = path if Path(path).exists() else None
-            test_find_tfl_lights(image_path, image_json_path)
+            path: Optional[str] = image_path.replace('_leftImg8bit.png', '_gtFine_labelIds.png')
+            image_GT_path: Optional[str] = path if Path(path).exists() else None
+            test_find_tfl_lights(image_path, image_json_path, image_GT_path)
 
     if args.image and args.json:
         test_find_tfl_lights(args.image, args.json)
