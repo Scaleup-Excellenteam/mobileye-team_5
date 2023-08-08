@@ -2,6 +2,7 @@ import json
 from typing import Dict, Any, List, Union
 
 import pandas as pd
+from PIL import Image
 from shapely.geometry import Polygon
 from pandas import DataFrame
 from pathlib import Path
@@ -83,8 +84,8 @@ def make_crop(x, y, color, zoom, *args, **kwargs):
     'y1'  The bigger y value (the higher corner)
     """
     # Define the size of the crop region around the TFL
-    crop_width = DEFAULT_CROPS_W #* zoom
-    crop_height = DEFAULT_CROPS_H # * zoom
+    crop_width = DEFAULT_CROPS_W
+    crop_height = DEFAULT_CROPS_H
     y0_offset = 0
     y1_offset = 0
     # Adjust y0 offset and y1 offset based on color
@@ -96,10 +97,10 @@ def make_crop(x, y, color, zoom, *args, **kwargs):
         y1_offset = 1 / 3
 
     # Calculate the default cropping region around the TFL
-    x0 = x + crop_width // 2
-    x1 = x - crop_width // 2
-    y0 = y - (crop_height * y0_offset)
-    y1 = y + (crop_height * y1_offset)
+    x0 = int(x - crop_width // 2)
+    x1 = int(x + crop_width // 2)
+    y0 = int(y - (crop_height * y0_offset))
+    y1 = int(y + (crop_height * y1_offset))
 
     return x0, x1, y0, y1, 'crop_data'
 
@@ -141,7 +142,7 @@ def save_for_part_2(crops_df: DataFrame):
     """
     if not ATTENTION_PATH.exists():
         ATTENTION_PATH.mkdir()
-    crops_sorted: DataFrame = crops_df.sort_values(by=SEQ)
+    crops_sorted: DataFrame = crops_df
     crops_sorted.to_csv(ATTENTION_PATH / CROP_CSV_NAME, index=False)
 
 
@@ -201,6 +202,16 @@ def create_crops(df: DataFrame, IGNOR=None) -> DataFrame:
 
         # added to current row to the result DataFrame that will serve you as the input to part 2 B).
         result_df = result_df.append(result_template, ignore_index=True)
+        if result_template[IS_TRUE] or result_template[IS_IGNORE]:
+            # Extract image_path and open the image
+            image_path = row[CROP_PATH]
+            image = Image.open(PART_IMAGE_SET / image_path)
+            # Crop the image using the coordinates
+            cropped_image = image.crop((x0, y0, x1, y1))
+            # Save cropped image
+            full_path = CROP_DIR / f'{image_path[:-4]}_{row[COL]}{tag}_{index}.png'
+            print(f"Saving to: {full_path}")
+            cropped_image.save(full_path)
 
     # A Short function to help you save the whole thing - your welcome ;)
     save_for_part_2(result_df)
