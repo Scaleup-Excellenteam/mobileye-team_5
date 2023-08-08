@@ -2,7 +2,7 @@ import json
 from typing import Dict, Any, List, Union
 
 import pandas as pd
-from matplotlib.patches import Polygon
+from shapely.geometry import Polygon
 from pandas import DataFrame
 from pathlib import Path
 from typing import List
@@ -111,7 +111,12 @@ def check_crop(image_json_path, x0, x1, y0, y1):
     one, just ignore it for now :). )
     """
     image_json_path = PART_IMAGE_SET / image_json_path
+    if not Path(image_json_path).exists():
+        print("JSON file does not exist, skipping this one.")
+        return None, None
+
     image_json = json.load(Path(image_json_path).open())
+
     traffic_light_polygons: List[POLYGON_OBJECT] = [image_object for image_object in image_json['objects']
                                                     if image_object['label'] in TFL_LABEL]
     is_true, ignore = False, False
