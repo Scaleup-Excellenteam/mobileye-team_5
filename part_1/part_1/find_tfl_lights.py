@@ -158,11 +158,11 @@ def calculate_zoom(diameters):
     """
     zoom_values = []
     for diameter in diameters:
-        if diameter >= 32:
+        if diameter >= 24:
             zoom_values.append(1.0)
-        elif diameter >= 16:
+        elif diameter >= 12:
             zoom_values.append(0.5)
-        elif diameter >= 8:
+        elif diameter >= 6:
             zoom_values.append(0.25)
         else:
             zoom_values.append(0.125)
