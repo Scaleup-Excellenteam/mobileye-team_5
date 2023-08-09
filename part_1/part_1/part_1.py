@@ -3,7 +3,8 @@ import json
 import argparse
 from pathlib import Path
 import crop_tfl
-
+from crop_tfl import create_all_crops
+import os
 import numpy as np
 from scipy import signal as sg
 from scipy.ndimage import maximum_filter, label
@@ -13,7 +14,7 @@ import cv2
 from find_tfl_lights import extract_tfl_coordinates
 
 # if you wanna iterate over multiple files and json, the default source folder name is this.
-DEFAULT_BASE_DIR: str = 'Image_1'
+DEFAULT_BASE_DIR: str = 'data/images_set/Image_1'
 
 # The label we wanna look for in the polygons json file
 TFL_LABEL = ['traffic light']
@@ -55,6 +56,9 @@ def test_find_tfl_lights(image_path: str, image_json_path: Optional[str] = None,
     """
     Run the traffic light detection code and plot the results.
     """
+    # Extract the filename and extension from the full path
+    image_filename = os.path.basename(image_path)
+
     # using pillow to load the image
     image: Image = Image.open(image_path)
     # converting the image to a numpy ndarray array
@@ -66,17 +70,15 @@ def test_find_tfl_lights(image_path: str, image_json_path: Optional[str] = None,
         objects: List[POLYGON_OBJECT] = [image_object for image_object in image_json['objects']
                                          if image_object['label'] in TFL_LABEL]
 
-    show_image_and_gt(c_image, objects, fig_num)
+    # show_image_and_gt(c_image, objects, fig_num)
 
-    red_x, red_y, green_x, green_y, red_diameters, green_diameters = extract_tfl_coordinates(c_image, image_path,
+    red_x, red_y, green_x, green_y, red_diameters, green_diameters = extract_tfl_coordinates(c_image, image_filename,
                                                                                              image_json_path,
                                                                                              image_GT_path)
 
-    red_cropped = crop_tfl.crop_tfl_rect(c_image, red_x, red_y, 'red')
-    green_cropped = crop_tfl.crop_tfl_rect(c_image, green_x, green_y, 'green')
-    # 'ro': This specifies the format string. 'r' represents the color red, and 'o' represents circles as markers.
-    plt.plot(red_x, red_y, 'ro', markersize=4)
-    plt.plot(green_x, green_y, 'go', markersize=4)
+    create_all_crops()
+    # plt.plot(red_x, red_y, 'ro', markersize=4)
+    # plt.plot(green_x, green_y, 'go', markersize=4)
 
 
 def main(argv=None):

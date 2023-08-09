@@ -120,7 +120,7 @@ def save_traffic_light_coordinates_to_csv(data, csv_file):
     Returns:
         None
     """
-    fieldnames = ["Sequence", "Image Path", "JSON Path", "GT Path", "X Coordinate", "Y Coordinate", "Zoom", "Color"]
+    fieldnames = ["seq", "path", "json_path", "gtim_path", "x", "y", "zoom", "col"]
     with open(csv_file, "a", newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
 
@@ -257,30 +257,31 @@ def extract_tfl_coordinates(image: np.array, image_path: str, image_json_path, i
 
     for x, y, color, diameter, zoom in zip(red_x, red_y, ['r'] * len(red_x), red_diameters, zoom_values[:len(red_x)]):
         data.append({
-            "Sequence": counter,
-            "Image Path": image_path,
-            "JSON Path": image_json_path,
-            "GT Path": image_GT_path,
-            "X Coordinate": x,
-            "Y Coordinate": y,
-            "Zoom": zoom,
-            "Color": color
+            "seq": counter,
+            "path": image_path,
+            "json_path": image_json_path,
+            "gtim_path": image_GT_path,
+            "x": x,
+            "y": y,
+            "zoom": zoom,
+            "col": color
         })
         counter += 1
     for x, y, color, diameter, zoom in zip(green_x, green_y, ['g'] * len(green_x), green_diameters, zoom_values[len(red_x):]):
         data.append({
-            "Sequence": counter,
-            "Image Path": image_path,
-            "JSON Path": image_json_path,
-            "GT Path": image_GT_path,
-            "X Coordinate": x,
-            "Y Coordinate": y,
-            "Zoom": zoom,
-            "Color": color
+            "seq": counter,
+            "path": image_path,
+            "json_path": image_json_path,
+            "gtim_path": image_GT_path,
+            "x": x,
+            "y": y,
+            "zoom": zoom,
+            "col": color
         })
         counter += 1
 
-    csv_file = "attention_results.csv"
+
+    csv_file = "data/attention_results/attention_results.csv"
     save_traffic_light_coordinates_to_csv(data, csv_file)
 
     return red_x, red_y, green_x, green_y, red_diameters, green_diameters
