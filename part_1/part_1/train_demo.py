@@ -9,7 +9,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torch.utils.tensorboard import SummaryWriter
 
-from part_1.part_1 import consts as C
+import consts as C
 from data_utils import TrafficLightDataSet, ModelManager, MyNeuralNetworkBase
 from mpl_goodies import nn_examiner_example
 
@@ -212,11 +212,13 @@ def examine_my_results(base_dir,
 
 def main():
     base_dir = C.DATA_DIR
-    full_images_dir = os.path.join(base_dir, C.FULL_IMAGES_DIR)
-    model_name = 'my_model_final_2'
+    print(base_dir)
+    full_images_dir = os.path.join(base_dir, C.PART_IMAGE_SET, C.IMAGES_1)
+    print("full ", full_images_dir)
+    model_name = 'my_model_final_3'
     train_dataset = TrafficLightDataSet(base_dir, full_images_dir, is_train=True)
     test_dataset = TrafficLightDataSet(base_dir, full_images_dir, is_train=False)
-    trained_model_path = go_train(base_dir, model_name, train_dataset, test_dataset, num_epochs=10)
+    trained_model_path = go_train(base_dir, model_name, train_dataset, test_dataset, num_epochs=50)
     examine_my_results(base_dir, full_images_dir, trained_model_path, test_dataset)
 
 

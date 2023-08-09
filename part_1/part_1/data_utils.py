@@ -9,7 +9,7 @@ from PIL import Image
 from torch import nn
 from torch.utils.data import Dataset
 
-from part_1.part_1 import consts as C
+import consts as C
 
 
 @contextlib.contextmanager
@@ -54,6 +54,7 @@ class TrafficLightDataSet(Dataset):
         self.full_image_base = full_image_dir  # C.default_train_images
         self.base_dir = base_dir
         self.crop_dir = os.path.join(base_dir, C.CROP_DIR)
+        print("crop ", self.crop_dir)
         crops_csv_path = os.path.join(base_dir, C.ATTENTION_PATH, C.CROP_CSV_NAME)
         attention_csv_path = os.path.join(base_dir, C.ATTENTION_PATH, C.ATTENTION_CSV_NAME)
         crop_data = pd.read_csv(crops_csv_path)  # type: pd.DataFrame
@@ -80,7 +81,10 @@ class TrafficLightDataSet(Dataset):
             assert False, "What to do??"
 
         row = self.crop_data.iloc[idx]
+        print("crop again ", self.crop_dir)
+        print("stram", row[C.path])
         image_path = os.path.join(self.crop_dir, row[C.PATH])
+        print("image path ", image_path)
         image = np.array(Image.open(image_path))
         image = np.transpose(image, (2, 0, 1))  # Transposing the image to channel-first format
         return {self.IMAGE: image, self.LABEL: row[C.IS_TRUE], self.SEQ: row[self.SEQ], self.IMAGE_PATH: image_path}
@@ -119,7 +123,7 @@ class MyNeuralNetworkBase(nn.Module):
             nn.Conv2d(in_channels=16, out_channels=25, kernel_size=(3, 3)),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
-        )
+        )#TODO: add another conv2d maxpool2d
 
         self.fc_layers = nn.Sequential(
             nn.Flatten(),

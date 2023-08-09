@@ -134,7 +134,7 @@ def create_crops(df: DataFrame, IGNOR=None) -> DataFrame:
 
         # Concatenate the current row DataFrame with the existing result DataFrame
         result_df = pd.concat([result_df, result_row_df], ignore_index=True)
-        if result_template[C.IS_TRUE] or not result_template[C.IS_IGNORE]:
+        if result_template[C.IS_TRUE] or not result_template[C.IS_IGNORE]: # TODO: only ignore = false
             # Extract image_path and open the image
             image_path = row[C.CROP_PATH]
             image = Image.open(C.PART_IMAGE_SET / C.IMAGES_1 / image_path)
