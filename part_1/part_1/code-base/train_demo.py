@@ -9,7 +9,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torch.utils.tensorboard import SummaryWriter
 
-import consts as C  # TODO: really?
+from part_1.part_1 import consts as C
 from data_utils import TrafficLightDataSet, ModelManager, MyNeuralNetworkBase
 from mpl_goodies import nn_examiner_example
 

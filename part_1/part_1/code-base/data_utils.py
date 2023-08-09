@@ -1,21 +1,15 @@
 import contextlib
 import os
-from pathlib import Path
 import pickle
-import sys
 
 import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
-from matplotlib import pyplot as plt
 from torch import nn
 from torch.utils.data import Dataset
-from torchsummary import summary
 
-from consts import SEQ_IMAG, NAME, IMAG_PATH, GTIM_PATH, JSON_PATH, TRAIN_TEST_VAL, TRAIN, TEST, VALIDATION
-from mpl_goodies import plot_rects
-import consts as C
+from part_1.part_1 import consts as C
 
 
 @contextlib.contextmanager

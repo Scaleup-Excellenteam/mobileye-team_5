@@ -4,6 +4,7 @@ from scipy import ndimage
 from PIL import Image
 import cv2
 import csv
+import consts as C
 
 # reference for the algorithm used below :
 # Blog: https://medium.com/@kenan.r.alkiek/https-medium-com-kenan-r-alkiek-traffic-light-recognition-505d6ab913b1
@@ -267,7 +268,8 @@ def extract_tfl_coordinates(image: np.array, image_path: str, image_json_path, i
             "col": color
         })
         counter += 1
-    for x, y, color, diameter, zoom in zip(green_x, green_y, ['g'] * len(green_x), green_diameters, zoom_values[len(red_x):]):
+    for x, y, color, diameter, zoom in zip(green_x, green_y, ['g'] * len(green_x), green_diameters,
+                                           zoom_values[len(red_x):]):
         data.append({
             "seq": counter,
             "path": image_path,
@@ -280,13 +282,7 @@ def extract_tfl_coordinates(image: np.array, image_path: str, image_json_path, i
         })
         counter += 1
 
-
-    csv_file = "data/attention_results/attention_results.csv"
-    save_traffic_light_coordinates_to_csv(data, csv_file)
+    csv_file = C.ATTENTION_PATH / C.ATTENTION_CSV_NAME
+    save_traffic_light_coordinates_to_csv(data, str(csv_file))
 
     return red_x, red_y, green_x, green_y, red_diameters, green_diameters
-
-
-
-
-

@@ -9,70 +9,8 @@ from pathlib import Path
 from typing import List
 
 
-SEQ_IMAG: str = 'seq_imag'  # Serial number of the image
-NAME: str = 'name'
-IMAG_PATH: str = 'imag_path'
-GTIM_PATH: str = 'gtim_path'
-JSON_PATH: str = 'json_path'
-X: str = 'x'
-Y: str = 'y'
-COLOR: str = 'color'
-# The label we wanna look for in the polygons json file
-TFL_LABEL = ['traffic light']
-POLYGON_OBJECT = Dict[str, Union[str, List[int]]]
-# # Data CSV columns:
-CSV_INPUT: List[str] = [SEQ_IMAG, NAME, IMAG_PATH, JSON_PATH, GTIM_PATH]
-CSV_OUTPUT: List[str] = [SEQ_IMAG, NAME, IMAG_PATH, JSON_PATH, GTIM_PATH, X, Y, COLOR]
+import consts as C  # TODO: really?
 
-TRAIN_TEST_VAL = 'train_test_val'
-TRAIN = 'train'
-TEST = 'test'
-VALIDATION = 'validation'
-
-BASE_SNC_DIR = Path.cwd()
-DATA_DIR: Path = (BASE_SNC_DIR / 'data')
-FULL_IMAGES_DIR: Path = 'fullImages'  # Where we write the full images
-CROP_DIR: Path = DATA_DIR / 'crops'
-PART_IMAGE_SET: Path = DATA_DIR / 'images_set'
-IMAGES_1: Path = PART_IMAGE_SET / 'Image_1'
-
-# # Crop size:
-DEFAULT_CROPS_W: int = 32
-DEFAULT_CROPS_H: int = 96
-
-SEQ: str = 'seq'  # The image seq number -> for tracing back the original image
-IS_TRUE: str = 'is_true'  # Is it a traffic light or not.
-IS_IGNORE: str = 'is_ignore'
-# investigate the reason after
-CROP_PATH: str = 'path'
-X0: str = 'x0'  # The bigger x value (the right corner)
-X1: str = 'x1'  # The smaller x value (the left corner)
-Y0: str = 'y0'  # The smaller y value (the lower corner)
-Y1: str = 'y1'  # The bigger y value (the higher corner)
-COL: str = 'col'
-
-RELEVANT_IMAGE_PATH: str = 'path'
-ZOOM: str = 'zoom'  # If you zoomed in the picture, then by how much? (0.5. 0.25 etc.).
-PATH: str = 'path'
-
-# # CNN input CSV columns:
-CROP_RESULT: List[str] = [SEQ, IS_TRUE, IS_IGNORE, CROP_PATH, X0, X1, Y0, Y1, COL]
-ATTENTION_RESULT: List[str] = [RELEVANT_IMAGE_PATH, X, Y, ZOOM, COL]
-
-# # Files path
-BASE_SNC_DIR: Path = Path.cwd().parent
-ATTENTION_PATH: Path = DATA_DIR / 'attention_results'
-
-ATTENTION_CSV_NAME: str = 'attention_results.csv'
-CROP_CSV_NAME: str = 'crop_results.csv'
-
-MODELS_DIR: Path = DATA_DIR / 'models'  # Where we explicitly copy/save good checkpoints for "release"
-LOGS_DIR: Path = MODELS_DIR / 'logs'  # Each model will have a folder. TB will show all models
-
-
-# # File names (directories to be appended automatically)
-TFLS_CSV: str = 'tfls.csv'
-CSV_OUTPUT_NAME: str = 'results.csv'
 
 def make_crop(x, y, color, zoom, *args, **kwargs):
     """
@@ -84,8 +22,8 @@ def make_crop(x, y, color, zoom, *args, **kwargs):
     'y1'  The bigger y value (the higher corner)
     """
     # Define the size of the crop region around the TFL
-    crop_width = DEFAULT_CROPS_W
-    crop_height = DEFAULT_CROPS_H
+    crop_width = C.DEFAULT_CROPS_W
+    crop_height = C.DEFAULT_CROPS_H
     y0_offset = 0
     y1_offset = 0
     # Adjust y0 offset and y1 offset based on color
@@ -106,11 +44,11 @@ def make_crop(x, y, color, zoom, *args, **kwargs):
 
 
 def check_crop(image_json_path, x0, x1, y0, y1):
-    image_json_path = PART_IMAGE_SET / IMAGES_1 / image_json_path
+    image_json_path = C.PART_IMAGE_SET / C.IMAGES_1 / image_json_path
 
     image_json = json.load(Path(image_json_path).open())
-    traffic_light_polygons: List[POLYGON_OBJECT] = [image_object for image_object in image_json['objects']
-                                                    if image_object['label'] in TFL_LABEL]
+    traffic_light_polygons: List[C.POLYGON_OBJECT] = [image_object for image_object in image_json['objects']
+                                                    if image_object['label'] in C.TFL_LABEL]
     is_true, ignore = False, False
     cropped_polygon = Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
 
@@ -131,10 +69,10 @@ def save_for_part_2(crops_df: DataFrame):
     *** No need to touch this. ***
     Saves the result DataFrame containing the crops data in the relevant folder under the relevant name for part 2.
     """
-    if not ATTENTION_PATH.exists():
-        ATTENTION_PATH.mkdir()
+    if not C.ATTENTION_PATH.exists():
+        C.ATTENTION_PATH.mkdir()
     crops_sorted: DataFrame = crops_df
-    crops_sorted.to_csv(ATTENTION_PATH / CROP_CSV_NAME, index=False)
+    crops_sorted.to_csv(C.ATTENTION_PATH / C.CROP_CSV_NAME, index=False)
 
 
 def create_crops(df: DataFrame, IGNOR=None) -> DataFrame:
@@ -148,62 +86,62 @@ def create_crops(df: DataFrame, IGNOR=None) -> DataFrame:
     # Run this from your 'code' folder so that it will be in the right relative folder from your data folder.
 
     # creates a folder for you to save the crops in, recommended not must
-    if not CROP_DIR.exists():
-        CROP_DIR.mkdir()
+    if not C.CROP_DIR.exists():
+        C.CROP_DIR.mkdir()
 
     # For documentation about each key end what it means, click on 'CROP_RESULT' and see for each value what it means.
     # You wanna stick with this DataFrame structure because its output is the same as the input for the next stages.
-    result_df = pd.DataFrame(columns=CROP_RESULT)
+    result_df = pd.DataFrame(columns=C.CROP_RESULT)
 
     # A dict containing the row you want to insert into the result DataFrame.
-    result_template: Dict[Any] = {SEQ: '', IS_TRUE: '', IGNOR: '', CROP_PATH: '', JSON_PATH: '', X0: '', X1: '', Y0: '', Y1: '',
-                                  COL: ''}
+    result_template: Dict[Any] = {C.SEQ: '', C.IS_TRUE: '', IGNOR: '', C.CROP_PATH: '', C.JSON_PATH: '', C.X0: '', C.X1: '', C.Y0: '', C.Y1: '',
+                                  C.COL: ''}
     for index, row in df.iterrows():
         # Save sequence TFL in each image
-        result_template[SEQ] = row[SEQ]
+        result_template[C.SEQ] = row[C.SEQ]
         # Save color TFL in each image
-        result_template[COL] = row[COL]
+        result_template[C.COL] = row[C.COL]
 
         # Extract image_path
-        image_path = row[CROP_PATH]
+        image_path = row[C.CROP_PATH]
 
         # Extrac corp rect from
-        x0, x1, y0, y1, crop = make_crop(row[X], row[Y], row[COL], row[ZOOM])
-        result_template[X0], result_template[X1], result_template[Y0], result_template[Y1] = x0, x1, y0, y1
+        x0, x1, y0, y1, crop = make_crop(row[C.X], row[C.Y], row[C.COL], row[C.ZOOM])
+        result_template[C.X0], result_template[C.X1], result_template[C.Y0], result_template[C.Y1] = x0, x1, y0, y1
 
         # crop.save(CROP_DIR / crop_path)
 
         # Save json path (Anton need to pass from part 1)
         image_json_path = image_path.replace('_leftImg8bit.png', '_gtFine_polygons.json')
-        result_template[JSON_PATH] = image_json_path
+        result_template[C.JSON_PATH] = image_json_path
 
         # Check crop rectangle if it TFL or not, ignore if it parts of TFL, double TFL,
-        result_template[IS_TRUE], result_template[IS_IGNORE] = check_crop(image_json_path, x0, x1, y0, y1)
+        result_template[C.IS_TRUE], result_template[C.IS_IGNORE] = check_crop(image_json_path, x0, x1, y0, y1)
 
         # Create unique path for crop TFL
-        if result_template[IS_IGNORE]:
+        if result_template[C.IS_IGNORE]:
             tag = 'i'
         else:
-            tag = 'T' if result_template[IS_TRUE] else 'F'
+            tag = 'T' if result_template[C.IS_TRUE] else 'F'
 
-        crop_path = f'/data/crops/{image_path[:-4]}_{row[COL]}{tag}_{index}'
+        crop_path = f'/data/crops/{image_path[:-4]}_{row[C.COL]}{tag}_{index}'
 
         # Save unique path
-        result_template[CROP_PATH] = crop_path
+        result_template[C.CROP_PATH] = crop_path
 
         # Create a DataFrame with the current result_template data
         result_row_df = pd.DataFrame(result_template, index=[index])
 
         # Concatenate the current row DataFrame with the existing result DataFrame
         result_df = pd.concat([result_df, result_row_df], ignore_index=True)
-        if result_template[IS_TRUE] or not result_template[IS_IGNORE]:
+        if result_template[C.IS_TRUE] or not result_template[C.IS_IGNORE]:
             # Extract image_path and open the image
-            image_path = row[CROP_PATH]
-            image = Image.open(PART_IMAGE_SET / IMAGES_1 / image_path)
+            image_path = row[C.CROP_PATH]
+            image = Image.open(C.PART_IMAGE_SET / C.IMAGES_1 / image_path)
             # Crop the image using the coordinates
             cropped_image = image.crop((x0, y0, x1, y1))
             # Save cropped image
-            full_path = CROP_DIR / f'{image_path[:-4]}_{row[COL]}{tag}_{index}.png'
+            full_path = C.CROP_DIR / f'{image_path[:-4]}_{row[C.COL]}{tag}_{index}.png'
             print(f"Saving to: {full_path}")
             cropped_image.save(full_path)
 
@@ -213,7 +151,7 @@ def create_crops(df: DataFrame, IGNOR=None) -> DataFrame:
 
 
 def create_all_crops():
-    df = pd.read_csv(BASE_SNC_DIR/ATTENTION_PATH/ATTENTION_CSV_NAME)
+    df = pd.read_csv(C.BASE_SNC_DIR/C.ATTENTION_PATH/C.ATTENTION_CSV_NAME)
     crop_df = create_crops(df)
 
 

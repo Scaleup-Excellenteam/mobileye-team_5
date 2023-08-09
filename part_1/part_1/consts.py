@@ -1,7 +1,7 @@
 # This file contains constants.. Mainly strings.
 # It's never a good idea to have a string scattered in your code across different files, so just put them here
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Union
 
 # # Column name
 SEQ_IMAG: str = 'seq_imag'  # Serial number of the image
@@ -13,6 +13,8 @@ X: str = 'x'
 Y: str = 'y'
 COLOR: str = 'color'
 
+TFL_LABEL = ['traffic light']
+POLYGON_OBJECT = Dict[str, Union[str, List[int]]]
 # # Data CSV columns:
 CSV_INPUT: List[str] = [SEQ_IMAG, NAME, IMAG_PATH, JSON_PATH, GTIM_PATH]
 CSV_OUTPUT: List[str] = [SEQ_IMAG, NAME, IMAG_PATH, JSON_PATH, GTIM_PATH, X, Y, COLOR]
@@ -22,10 +24,12 @@ TRAIN = 'train'
 TEST = 'test'
 VALIDATION = 'validation'
 
-BASE_SNC_DIR = Path.cwd().parent
+BASE_SNC_DIR = Path.cwd()
 DATA_DIR: Path = (BASE_SNC_DIR / 'data')
 FULL_IMAGES_DIR: Path = 'fullImages'  # Where we write the full images
 CROP_DIR: Path = DATA_DIR / 'crops'
+PART_IMAGE_SET: Path = DATA_DIR / 'images_set'
+IMAGES_1: Path = PART_IMAGE_SET / 'Image_1'
 
 # # Crop size:
 DEFAULT_CROPS_W: int = 32
