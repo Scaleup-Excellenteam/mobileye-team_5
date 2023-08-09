@@ -76,7 +76,6 @@ def test_find_tfl_lights(image_path: str, image_json_path: Optional[str] = None,
                                                                                              image_json_path,
                                                                                              image_GT_path)
 
-    create_all_crops()
     # plt.plot(red_x, red_y, 'ro', markersize=4)
     # plt.plot(green_x, green_y, 'go', markersize=4)
 
@@ -116,6 +115,8 @@ def main(argv=None):
     elif args.image:
         test_find_tfl_lights(args.image)
     plt.show(block=True)
+
+    create_all_crops()
 
 
 if __name__ == '__main__':

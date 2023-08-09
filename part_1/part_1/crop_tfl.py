@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import List
 
 
-
 SEQ_IMAG: str = 'seq_imag'  # Serial number of the image
 NAME: str = 'name'
 IMAG_PATH: str = 'imag_path'
@@ -108,7 +107,6 @@ def make_crop(x, y, color, zoom, *args, **kwargs):
 
 def check_crop(image_json_path, x0, x1, y0, y1):
     image_json_path = PART_IMAGE_SET / IMAGES_1 / image_json_path
-    print(image_json_path)
 
     image_json = json.load(Path(image_json_path).open())
     traffic_light_polygons: List[POLYGON_OBJECT] = [image_object for image_object in image_json['objects']
@@ -198,7 +196,7 @@ def create_crops(df: DataFrame, IGNOR=None) -> DataFrame:
 
         # Concatenate the current row DataFrame with the existing result DataFrame
         result_df = pd.concat([result_df, result_row_df], ignore_index=True)
-        if result_template[IS_TRUE] or result_template[IS_IGNORE]:
+        if result_template[IS_TRUE] or not result_template[IS_IGNORE]:
             # Extract image_path and open the image
             image_path = row[CROP_PATH]
             image = Image.open(PART_IMAGE_SET / IMAGES_1 / image_path)
